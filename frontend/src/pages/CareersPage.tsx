@@ -15,7 +15,7 @@ export default function CareersPage() {
     <p className="text-text-muted">Understand each role, compare your skills, and explore opportunities across six job sites.</p>
     <div className="flex flex-wrap gap-4"><label className="flex-1 text-sm text-text-muted">Search careers<input value={query} onChange={event => setQuery(event.target.value)} placeholder="AI, full stack, cloud…" className="block mt-2 w-full bg-background-100 rounded-lg border border-white/10 p-3 text-white" /></label>
       <label className="text-sm text-text-muted">Search jobs for<select value={jobRole} onChange={event => setJobRole(event.target.value)} className="block mt-2 bg-background-100 rounded-lg border border-white/10 p-3 text-white">{Object.keys(ROLE_DETAILS).map(role => <option key={role}>{role}</option>)}</select></label></div>
-    {import.meta.env.DEV ? <LiveJobs role={jobRole} /> : <JobSources role={jobRole} />}
+    {import.meta.env.DEV || import.meta.env.MODE === 'demo' ? <LiveJobs role={jobRole} /> : <JobSources role={jobRole} />}
     <RequestState loading={loading} error={error} retry={reload} />
     {!loading && !error && !data?.length && <p className="text-text-muted">No careers are available yet.</p>}
     {!loading && !error && data?.length && !filtered?.length ? <p className="text-text-muted">No careers match your search.</p> : null}

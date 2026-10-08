@@ -34,7 +34,7 @@ export default function CareerAnalysisPage() {
         <p className="text-xs text-text-muted">CareerOS role overview. Exact responsibilities and eligibility depend on the employer.</p>
       </section>}
       {!!data.requirements?.length && <section className="space-y-3"><h2 className="text-xl font-semibold text-white">Core skills</h2><div className="flex flex-wrap gap-2">{data.requirements.map(skill => <span key={skill.skillId} className="rounded-lg bg-white/5 px-3 py-2 text-text-muted">{skill.skillName}</span>)}</div></section>}
-      {import.meta.env.DEV && ROLE_DETAILS[data.name] ? <LiveJobs role={data.name} /> : <JobSources role={data.name} />}
+      {(import.meta.env.DEV || import.meta.env.MODE === 'demo') && ROLE_DETAILS[data.name] ? <LiveJobs role={data.name} /> : <JobSources role={data.name} />}
       {guide && <a className="block text-primary-400 underline underline-offset-4" href={guide.url} target="_blank" rel="noopener noreferrer">Explore the {guide.title} guide on roadmap.sh ↗</a>}
       <button disabled={busy} onClick={() => void run(false)} className="bg-white text-black p-3 rounded-lg disabled:opacity-50">{busy ? 'Working…' : 'Analyze my skills'}</button>
       {analysis && <section className="glass-card p-6 rounded-xl space-y-4"><h2 className="text-2xl text-primary-400">{analysis.readinessScore}% ready</h2>

@@ -4,8 +4,8 @@ import { MOCK_CAREERS } from '../data/careers';
 import { MOCK_ROADMAP } from '../data/roadmap';
 import type { StudentDTO, StudentSkillDTO, CareerDTO, CareerAnalysisDTO, RoadmapDTO, DashboardDTO, ProfileDTO, TaskStatus } from './models';
 
-// Explicitly opt in for local presentations. Production builds use real authentication.
-export const DEMO_MODE = import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === 'true';
+// Only the explicit demo build and opted-in local development use public fixtures.
+export const DEMO_MODE = import.meta.env.MODE === 'demo' || (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === 'true');
 let student: StudentDTO = {
   id: MOCK_STUDENT.id, name: MOCK_STUDENT.name, email: MOCK_STUDENT.email,
   university: MOCK_STUDENT.university ?? null, degree: MOCK_STUDENT.degree ?? null,

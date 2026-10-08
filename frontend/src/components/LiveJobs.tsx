@@ -13,7 +13,8 @@ export default function LiveJobs({ role }: { role: string }) {
   useEffect(() => {
     const controller = new AbortController();
     setFeed(null); setLoading(true); setError('');
-    void fetch(`/__demo/jobs?${new URLSearchParams({ role })}`, { signal: controller.signal })
+    const endpoint = import.meta.env.DEV ? '/__demo/jobs' : '/api/jobs';
+    void fetch(`${endpoint}?${new URLSearchParams({ role })}`, { signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error('Unable to fetch jobs. Please retry.'); return response.json() as Promise<JobFeed>; })
       .then(data => { if (!controller.signal.aborted) setFeed(data); })
       .catch(err => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'Unable to fetch jobs.'); })

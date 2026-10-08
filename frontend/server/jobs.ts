@@ -56,7 +56,7 @@ export function parseJobs(name: string, html: string, role: string): LiveJob[] {
   return jobs.slice(0, 30);
 }
 
-async function fetchFeed(role: string): Promise<JobFeed> {
+export async function fetchFeed(role: string): Promise<JobFeed> {
   const results = await Promise.all(JOB_BOARDS.map(async board => {
     const url = board.name === 'LinkedIn'
       ? `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?${new URLSearchParams({ keywords: role, sortBy: 'DD', start: '0' })}`
