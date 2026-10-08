@@ -1,14 +1,35 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { generateKeyPairSync, sign } from 'node:crypto';
+import type { Request } from 'express';
+
+const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const keyServer = createServer((_req, res) => {
+  res.setHeader('content-type', 'application/json');
+  res.end(JSON.stringify({ keys: [{ ...publicKey.export({ format: 'jwk' }), kid: 'test', alg: 'RS256' }] }));
+}).listen(0, '127.0.0.1');
+await new Promise<void>(resolve => keyServer.once('listening', resolve));
+const keyPort = (keyServer.address() as { port: number }).port;
+after(() => new Promise<void>(resolve => keyServer.close(() => resolve())));
+
+function signedToken(expires: number) {
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'test' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub: '00000000-0000-0000-0000-000000000001', exp: expires })).toString('base64url');
+  const input = `${header}.${payload}`;
+  return `${input}.${sign('RSA-SHA256', Buffer.from(input), privateKey).toString('base64url')}`;
+}
 
 Object.assign(process.env, {
   NODE_ENV: 'test', DATABASE_URL: 'postgresql://test:test@127.0.0.1:5432/test',
-  AUTH_SECRET: 'a'.repeat(64), INTERNAL_SERVICE_SECRET: 'b'.repeat(64),
-  AUTH_GOOGLE_ID: '', AUTH_GOOGLE_SECRET: '', APP_URL: 'http://localhost:5173',
+  INTERNAL_SERVICE_SECRET: 'b'.repeat(64), APP_URL: 'http://localhost:5173',
+  NEON_AUTH_URL: 'https://auth.example.test/auth',
+  NEON_AUTH_JWKS_URL: `http://127.0.0.1:${keyPort}/jwks`,
   CORS_ORIGINS: 'http://localhost:5173', RATE_LIMIT_MAX: '1000',
 });
 const { app } = await import('../apps/gateway/src/index');
-const { authConfig } = await import('../apps/gateway/src/auth');
+const { studentIdOf } = await import('../apps/gateway/src/auth');
+const { prisma } = await import('../packages/database/src/index');
 const { resolveStudentId, createServiceApp } = await import('../packages/http/src/index');
 const { resolveTarget, forward } = await import('../apps/gateway/src/proxy');
 const { roadmapService } = await import('../apps/career-service/src/services/roadmap');
@@ -20,6 +41,29 @@ await new Promise<void>(resolve => server.once('listening', resolve));
 const address = server.address() as { port: number };
 const base = `http://127.0.0.1:${address.port}`;
 after(() => new Promise<void>(resolve => server.close(() => resolve())));
+
+test('signed Neon identity resolves a student; database failures do not become sign-outs', async () => {
+  const originalQuery = prisma.$queryRaw;
+  const originalFind = prisma.user.findUnique;
+  const id = '00000000-0000-0000-0000-000000000001';
+  prisma.$queryRaw = (async (sql: TemplateStringsArray) => {
+    assert.match(sql.join('?'), /id::text =/);
+    return [{ id, email: 'test@example.com', name: 'Test' }];
+  }) as typeof prisma.$queryRaw;
+  prisma.user.findUnique = (async () => ({ id })) as unknown as typeof prisma.user.findUnique;
+  const req = { headers: { authorization: `Bearer ${signedToken(Math.floor(Date.now() / 1000) + 60)}` } } as Request;
+  try {
+    assert.equal(await studentIdOf(req), id);
+    prisma.$queryRaw = (async () => { throw new Error('database unavailable'); }) as typeof prisma.$queryRaw;
+    await assert.rejects(studentIdOf(req), /database unavailable/);
+    const expired = { headers: { authorization: `Bearer ${signedToken(1)}` } } as Request;
+    assert.equal(await studentIdOf(expired), undefined);
+    assert.equal(await studentIdOf({ headers: { authorization: 'Bearer malformed' } } as Request), undefined);
+  } finally {
+    prisma.$queryRaw = originalQuery;
+    prisma.user.findUnique = originalFind;
+  }
+});
 
 test('API rejects anonymous and spoofed identity requests, with CORS headers', async () => {
   for (const path of ['/api/dashboard', '/api/profiles/victim', '/api/roadmaps/private']) {
@@ -33,39 +77,6 @@ test('unsafe requests require a trusted browser origin', async () => {
     const response = await fetch(base + '/api/roadmaps/generate', { method: 'POST', headers: origin ? { origin } : {} });
     assert.equal(response.status, 403);
   }
-});
-test('Auth.js session and CSRF endpoints work on Express 5', async () => {
-  assert.equal(await fetch(base + '/api/auth/session').then(r => r.json()), null);
-  const response = await fetch(base + '/api/auth/csrf');
-  assert.equal(response.status, 200);
-  assert.ok((await response.json()).csrfToken);
-  assert.match(response.headers.get('set-cookie') ?? '', /HttpOnly/i);
-});
-test('Auth.js reads a database session and sign-out revokes it', async () => {
-  const adapter = authConfig.adapter!;
-  const originalGet = adapter.getSessionAndUser;
-  const originalDelete = adapter.deleteSession;
-  let active = true;
-  const user = { id: 'student-1', name: 'Test student', email: 'test@example.com', emailVerified: new Date() };
-  adapter.getSessionAndUser = async token => token === 'test-session' && active ? {
-    user, session: { sessionToken: token, userId: user.id, expires: new Date(Date.now() + 7 * 86400_000) },
-  } : null;
-  adapter.deleteSession = async () => { active = false; };
-  try {
-    const cookie = 'authjs.session-token=test-session';
-    const session = await fetch(base + '/api/auth/session', { headers: { cookie } }).then(r => r.json());
-    assert.equal(session.user.id, user.id);
-    assert.equal(session.sessionToken, undefined);
-    const csrf = await fetch(base + '/api/auth/csrf');
-    const csrfCookies = csrf.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
-    const { csrfToken } = await csrf.json();
-    const result = await fetch(base + '/api/auth/signout', {
-      method: 'POST', headers: { origin: 'http://localhost:5173', cookie: `${cookie}; ${csrfCookies}`, 'content-type': 'application/x-www-form-urlencoded', 'X-Auth-Return-Redirect': '1' },
-      body: new URLSearchParams({ csrfToken, callbackUrl: 'http://localhost:5173/login' }),
-    });
-    assert.equal(result.status, 200); assert.equal(active, false);
-    assert.equal(await fetch(base + '/api/auth/session', { headers: { cookie } }).then(r => r.json()), null);
-  } finally { adapter.getSessionAndUser = originalGet; adapter.deleteSession = originalDelete; }
 });
 test('student identity cannot come from a client body or mismatched path', () => {
   assert.throws(() => resolveStudentId({ headers: {}, params: { studentId: 'victim' }, body: {}, query: {} }));

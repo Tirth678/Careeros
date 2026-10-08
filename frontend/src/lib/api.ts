@@ -1,4 +1,5 @@
 
+import { DEMO_MODE, demoFetch } from './demo';
 const base = import.meta.env.VITE_API_URL as string | undefined;
 
 /** Same-origin by default — `vite.config.ts` proxies `/api` to the gateway. */
@@ -21,8 +22,11 @@ type Envelope<T> =
   | { success: false; error: { code: string; message: string } };
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (DEMO_MODE) return demoFetch<T>(path, init);
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json');
+  const token = await getAccessToken();
+  if (token) headers.set('authorization', `Bearer ${token}`);
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'include' });
   if (res.status === 401) window.dispatchEvent(new Event('auth:expired'));
@@ -46,3 +50,4 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!res.ok) throw new ApiError('HTTP_ERROR', 'The request failed', res.status);
   return body.data;
 }
+import { getAccessToken } from './neonAuth';

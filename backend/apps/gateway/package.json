@@ -16,6 +16,7 @@
     "@careeros/http": "workspace:*",
     "@careeros/shared-types": "workspace:*",
     "@careeros/validation": "workspace:*",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "jose": "^6.2.12"
   }
 }

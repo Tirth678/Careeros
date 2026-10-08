@@ -10,8 +10,7 @@ import {
   registerErrorHandler,
 } from "@careeros/http";
 import type { DashboardDTO, StudentDTO, StudentSkillDTO } from "@careeros/shared-types";
-import { studentIdOf, authConfig } from "./auth";
-import { ExpressAuth } from '@auth/express';
+import { studentIdOf } from "./auth";
 import { resolve } from 'node:path';
 import { forward, resolveTarget, segmentOf } from "./proxy";
 import { RateLimiter } from "./rateLimit";
@@ -86,15 +85,6 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 
   next();
 });
-
-// Pin Auth.js URL construction to the configured public origin.
-app.use('/api', (req, _res, next) => {
-  req.headers.host = new URL(config.APP_URL).host;
-  delete req.headers['x-forwarded-host'];
-  next();
-});
-// A regex capture preserves the Auth.js Express adapter's params[0] contract on Express 5.
-app.use(/^\/api\/auth\/(.*)/, ExpressAuth(authConfig));
 
 // ── Dashboard: authenticated fan-out to the career service ─────
 app.get("/api/dashboard", async (req: Request, res: Response, next: NextFunction) => {

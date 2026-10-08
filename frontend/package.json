@@ -6,16 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:demo": "tsc -b && vite build --mode demo",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/neon-js": "^0.7.0-beta",
+    "@visx/event": "^4.0.0",
+    "@visx/gradient": "^4.0.0",
+    "@visx/grid": "^4.0.0",
+    "@visx/responsive": "^4.0.0",
+    "@visx/scale": "^4.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^14.0.0",
     "lucide-react": "^1.53.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
+    "react-use-measure": "^2.1.7",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
@@ -24,6 +32,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.6.1",
+    "cheerio": "^1.2.0",
     "oxlint": "^1.81.0",
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19",

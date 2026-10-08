@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Brain, LayoutDashboard, User, Code2, Briefcase, Map, Settings, LogOut, Menu } from 'lucide-react';
+import { Brain, LayoutDashboard, User, Code2, Briefcase, Map, Settings, LogOut, Menu, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -9,6 +9,7 @@ const navItems = [
   { path: '/skills', label: 'Skills', icon: Code2 },
   { path: '/careers', label: 'Careers', icon: Briefcase },
   { path: '/roadmap', label: 'Roadmap', icon: Map },
+  { path: '/ai-assistant', label: 'AI Assistant', icon: Sparkles },
 ];
 
 export default function Sidebar() {
