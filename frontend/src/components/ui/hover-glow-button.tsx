@@ -1,4 +1,4 @@
-import React, { useRef, useState, MouseEvent, ReactNode } from 'react';
+import React, { useRef, useState, type MouseEvent, type ReactNode } from 'react';
 
 interface ButtonProps {
   children: ReactNode;
