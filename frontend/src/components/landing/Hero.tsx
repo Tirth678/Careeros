@@ -1,8 +1,10 @@
 import { ArrowRight, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { HoverButton } from '../ui/hover-glow-button';
 
 export default function Hero() {
+  const navigate = useNavigate();
   const itemVariants: any = {
     hidden: { opacity: 0, y: 20 },
     visible: (custom: number) => ({
@@ -54,9 +56,16 @@ export default function Hero() {
         className="flex flex-col sm:flex-row gap-4"
       >
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Link to="/signup" className="px-8 py-4 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+          <HoverButton 
+            onClick={() => navigate('/signup')} 
+            className="flex items-center justify-center gap-2 font-semibold !text-base"
+            glowColor="#A855F7"
+            backgroundColor="#ffffff"
+            textColor="#000000"
+            hoverTextColor="#000000"
+          >
             Build My Career Profile <ArrowRight className="w-5 h-5" />
-          </Link>
+          </HoverButton>
         </motion.div>
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Link to="/careers" className="px-8 py-4 bg-background-100 border border-white/10 text-white font-semibold rounded-lg hover:bg-background-200 transition-colors flex items-center justify-center">

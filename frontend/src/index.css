@@ -7,6 +7,12 @@
     @apply bg-background text-text font-sans antialiased selection:bg-primary-600 selection:text-white;
     color-scheme: dark;
   }
+  :root {
+    --button-ripple-color: oklch(0.145 0 0 / 0.3);
+  }
+  .dark {
+    --button-ripple-color: oklch(0.985 0 0 / 0.5);
+  }
 }
 
 @layer utilities {
