@@ -1,0 +1,19 @@
+{
+  "name": "career-service",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@careeros/config": "workspace:*",
+    "@careeros/database": "workspace:*",
+    "@careeros/http": "workspace:*",
+    "@careeros/shared-types": "workspace:*",
+    "@careeros/validation": "workspace:*",
+    "express": "^5.1.0"
+  }
+}

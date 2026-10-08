@@ -1,7 +1,24 @@
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import Sidebar from './Sidebar';
 
 export default function AppLayout() {
+  const { user, loading } = useAuth();
+
+  // Wait for session check to complete before deciding
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-black items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Not authenticated — redirect to login
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="flex min-h-screen bg-black">
       <Sidebar />
