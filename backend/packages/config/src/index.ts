@@ -81,9 +81,8 @@ const EnvSchema = z.object({
   AI_SERVICE_URL: z.string().url().default("http://localhost:3003"),
 
   APP_URL: z.string().url().default('http://localhost:5173'),
-  AUTH_SECRET: z.string().min(32),
-  AUTH_GOOGLE_ID: z.string().default(''),
-  AUTH_GOOGLE_SECRET: z.string().default(''),
+  NEON_AUTH_URL: z.string().url(),
+  NEON_AUTH_JWKS_URL: z.string().url(),
   INTERNAL_SERVICE_SECRET: z.string().min(32),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
@@ -113,10 +112,6 @@ process.env.AUTH_URL = new URL(env.APP_URL).origin;
 if (env.NODE_ENV === 'production' && !env.APP_URL.startsWith('https://')) {
   throw new Error('Production APP_URL must use HTTPS');
 }
-if (env.NODE_ENV === 'production' && (!env.AUTH_GOOGLE_ID || !env.AUTH_GOOGLE_SECRET)) {
-  throw new Error('Production requires AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET');
-}
-
 export const config = {
   ...env,
   corsOrigins: env.CORS_ORIGINS.split(",")

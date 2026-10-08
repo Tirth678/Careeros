@@ -90,6 +90,9 @@ importers:
       express:
         specifier: ^5.1.0
         version: 5.2.1
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
 
   apps/profile-service:
     dependencies:

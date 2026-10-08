@@ -1,0 +1,15 @@
+.skills-chart {
+  --chart-background: #101010;
+  --chart-foreground: #ffffff;
+  --chart-foreground-muted: #a1a1aa;
+  --chart-label: #a1a1aa;
+  --chart-line-primary: #c084fc;
+  --chart-line-secondary: #7c3aed;
+  --chart-crosshair: #c084fc55;
+  --chart-grid: #ffffff0d;
+}
+
+.skill-proficiency { appearance: none; height: 6px; overflow: hidden; border: 0; border-radius: 999px; background: #27272a; }
+.skill-proficiency::-webkit-progress-bar { background: #27272a; border-radius: 999px; }
+.skill-proficiency::-webkit-progress-value { background: linear-gradient(90deg, #7c3aed, #c084fc); border-radius: 999px; }
+.skill-proficiency::-moz-progress-bar { background: linear-gradient(90deg, #7c3aed, #c084fc); border-radius: 999px; }

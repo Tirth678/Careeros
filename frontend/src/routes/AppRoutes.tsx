@@ -9,6 +9,7 @@ import CareersPage from '../pages/CareersPage';
 import CareerAnalysisPage from '../pages/CareerAnalysisPage';
 import RoadmapPage from '../pages/RoadmapPage';
 import SettingsPage from '../pages/SettingsPage';
+import AIAssistantPage from '../pages/AIAssistantPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import AppLayout from '../components/layout/AppLayout';
 
@@ -26,6 +27,7 @@ export default function AppRoutes() {
         <Route path="/careers/:careerId" element={<CareerAnalysisPage />} />
         <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/ai-assistant" element={<AIAssistantPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

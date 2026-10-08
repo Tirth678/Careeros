@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSession, signInWithGoogle, signOut as endSession, type AuthUser } from '../lib/auth';
+import { DEMO_MODE } from '../lib/demo';
+import { getSession, signInWithGoogle, signOut as endSession, type AuthUser } from '../lib/neonAuth';
 
 type AuthContextValue = {
   user: AuthUser | null; loading: boolean; error: string | null;
@@ -27,7 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { window.removeEventListener('auth:expired', expired); window.removeEventListener('focus', focus); };
   }, [refresh, navigate]);
   const signOut = useCallback(async () => {
-    await endSession(); setUser(null); navigate('/login', { replace: true });
+    await endSession();
+    if (DEMO_MODE) { navigate('/', { replace: true }); return; }
+    setUser(null); navigate('/login', { replace: true });
   }, [navigate]);
   const value = useMemo(() => ({ user, loading, error, refresh, signInWithGoogle, signOut }), [user, loading, error, refresh, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
