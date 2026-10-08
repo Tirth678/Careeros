@@ -23,9 +23,8 @@ export const profileController = {
   },
 
   async createProfile(ctx: Ctx) {
-    const input = parse(createProfileSchema, ctx.body);
-    const id = crypto.randomUUID();
-    return ok(await profileService.createProfile(id, input));
+    const input = parse(updateProfileSchema, ctx.body);
+    return ok(await profileService.updateProfile(resolveStudentId(ctx), input));
   },
 
   async updateProfile(ctx: Ctx) {

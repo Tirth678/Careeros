@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Brain, LayoutDashboard, User, Code2, Briefcase, Map, Settings, LogOut, Menu } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -12,6 +13,8 @@ const navItems = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -56,15 +59,16 @@ export default function Sidebar() {
 
           <div className="pt-4 border-t border-white/10 flex items-center gap-3 px-2">
             <div className="w-10 h-10 rounded-full bg-primary-900/20 border border-primary-500/30 flex items-center justify-center text-primary-400 font-bold">
-              T
+              {user?.name?.[0] ?? 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">Tirth</p>
-              <p className="text-xs text-text-muted truncate">B.Tech CSE</p>
+              <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+              <p className="text-xs text-text-muted truncate">{user?.email}</p>
+              {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
             </div>
-            <Link to="/" className="p-2 text-text-muted hover:text-white transition-colors">
+            <button aria-label="Sign out" onClick={() => { void signOut().catch(() => setError('Sign out failed. Retry.')); }} className="p-2 text-text-muted hover:text-white transition-colors">
               <LogOut className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

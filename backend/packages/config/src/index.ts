@@ -80,8 +80,13 @@ const EnvSchema = z.object({
   CAREER_SERVICE_URL: z.string().url().default("http://localhost:3002"),
   AI_SERVICE_URL: z.string().url().default("http://localhost:3003"),
 
-  BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
-  BETTER_AUTH_SECRET: z.string().min(1),
+  APP_URL: z.string().url().default('http://localhost:5173'),
+  AUTH_SECRET: z.string().min(32),
+  AUTH_GOOGLE_ID: z.string().default(''),
+  AUTH_GOOGLE_SECRET: z.string().default(''),
+  INTERNAL_SERVICE_SECRET: z.string().min(32),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   CORS_ORIGINS: z.string().default("http://localhost:5173"),
 
   OPENROUTER_API_KEY: z.string().optional().default(""),
@@ -104,6 +109,13 @@ if (!parsed.success) {
 }
 
 const env = parsed.data;
+process.env.AUTH_URL = new URL(env.APP_URL).origin;
+if (env.NODE_ENV === 'production' && !env.APP_URL.startsWith('https://')) {
+  throw new Error('Production APP_URL must use HTTPS');
+}
+if (env.NODE_ENV === 'production' && (!env.AUTH_GOOGLE_ID || !env.AUTH_GOOGLE_SECRET)) {
+  throw new Error('Production requires AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET');
+}
 
 export const config = {
   ...env,

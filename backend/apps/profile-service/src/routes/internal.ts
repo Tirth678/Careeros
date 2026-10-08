@@ -3,6 +3,7 @@ import { ok } from "@careeros/shared-types";
 import { parse, skillProgressSchema } from "../schemas";
 import { profileService } from "../services/profile";
 import { skillService } from "../services/skill";
+import { resolveStudentId } from '@careeros/http';
 
 /**
  * Service-to-service endpoints. Never proxied by the gateway — other
@@ -13,7 +14,7 @@ export function internalRoutes(): Router {
 
   router.get("/internal/students/:studentId", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await profileService.getStudent(req.params.studentId);
+      const result = await profileService.getStudent(resolveStudentId(req));
       res.json(ok(result));
     } catch (err) {
       next(err);
@@ -22,7 +23,7 @@ export function internalRoutes(): Router {
 
   router.get("/internal/students/:studentId/skills", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await profileService.getSkills(req.params.studentId);
+      const result = await profileService.getSkills(resolveStudentId(req));
       res.json(ok(result));
     } catch (err) {
       next(err);
@@ -32,7 +33,7 @@ export function internalRoutes(): Router {
   router.post("/internal/students/:studentId/skill-progress", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const input = parse(skillProgressSchema, req.body);
-      const result = await skillService.bump(req.params.studentId, input.skillName, input.delta);
+      const result = await skillService.bump(resolveStudentId(req), input.skillName, input.delta);
       res.json(ok(result));
     } catch (err) {
       next(err);

@@ -1,59 +1,29 @@
-import { MOCK_ROADMAP } from '../data/roadmap';
-import ParticleBackground from '../components/landing/ParticleBackground';
 import { useState } from 'react';
-import TaskDetailDrawer from '../components/roadmap/TaskDetailDrawer';
-
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { useApi } from '../lib/useApi';
+import { apiFetch } from '../lib/api';
+import type { RoadmapDTO, TaskStatus } from '../lib/models';
+import RequestState from '../components/RequestState';
 export default function RoadmapPage() {
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-
-  return (
-    <div className="relative min-h-screen pb-20">
-      <ParticleBackground />
-      <div className="relative z-10 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">My Career Roadmap</h1>
-          <p className="text-text-muted mt-1">Your personalized path to becoming an AI Engineer.</p>
-        </div>
-        
-        <div className="glass-card p-6 rounded-2xl border border-white/10 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-white">AI Engineer</h2>
-            <p className="text-primary-400 mt-1 font-medium">Readiness: 72%</p>
-          </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-white">68%</div>
-            <p className="text-sm text-text-muted">Progress</p>
-          </div>
-        </div>
-
-        <div className="space-y-8 pl-4 border-l-2 border-background-200">
-          {MOCK_ROADMAP.map(phase => (
-            <div key={phase.id} className="relative">
-              <div className="absolute -left-[21px] top-1 w-10 h-10 bg-background border border-white/10 rounded-full flex items-center justify-center font-bold text-sm text-primary-400">
-                P{phase.order}
-              </div>
-              <div className="pl-10">
-                <h3 className="text-lg font-bold text-white tracking-widest">{phase.title}</h3>
-                <div className="mt-4 space-y-3">
-                  {phase.tasks.map(task => (
-                    <div 
-                      key={task.id} 
-                      onClick={() => setSelectedTask(task)}
-                      className={`p-4 rounded-xl border transition-colors cursor-pointer flex items-center gap-3 ${task.status === 'completed' ? 'glass-card border-white/10 opacity-70' : task.status === 'in-progress' ? 'bg-primary-900/10 border-primary-500/50' : 'glass-card border-white/10'}`}
-                    >
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${task.status === 'completed' ? 'border-primary-500 bg-primary-500 text-black' : task.status === 'in-progress' ? 'border-primary-400' : 'border-background-200'}`}>
-                        {task.status === 'completed' && <span className="text-[10px]">✓</span>}
-                      </div>
-                      <span className={`font-medium ${task.status === 'completed' ? 'text-text-muted line-through' : 'text-white'}`}>{task.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      {selectedTask && <TaskDetailDrawer task={selectedTask} onClose={() => setSelectedTask(null)} />}
-    </div>
-  );
+  const { user } = useAuth();
+  const { data, loading, error, reload } = useApi<RoadmapDTO | null>(`/api/students/${encodeURIComponent(user!.id)}/roadmaps/active`);
+  const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
+  async function update(taskId: string, status: TaskStatus) {
+    setBusy(true); setMessage('');
+    try { await apiFetch(`/api/roadmaps/${data!.id}/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify({ status }) }); reload(); }
+    catch (err) { setMessage(err instanceof Error ? err.message : 'Unable to update task'); }
+    finally { setBusy(false); }
+  }
+  return <div className="space-y-6"><h1 className="text-3xl font-bold text-white">My career roadmap</h1>
+    <RequestState loading={loading} error={error} retry={reload} />
+    {message && <p role="alert" className="text-red-400">{message}</p>}
+    {!loading && !error && (data ? <>
+      <section className="glass-card p-6 rounded-xl"><h2 className="text-xl text-white">{data.title}</h2><p className="text-text-muted my-3">{data.description}</p><p className="text-primary-400">{data.progress}% complete</p></section>
+      {data.tasks.map(task => <article key={task.id} className="glass-card p-5 rounded-xl border border-white/10 space-y-3">
+        <p className="text-primary-400 text-sm">Week {task.week} · {task.estimatedMinutes} minutes</p><h3 className="text-white font-semibold">{task.title}</h3><p className="text-text-muted">{task.description}</p>
+        <label className="text-text-muted">Status <select aria-label={`Status for ${task.title}`} disabled={busy} value={task.status} onChange={e => void update(task.id, e.target.value as TaskStatus)} className="bg-background-100 text-white rounded-lg p-2 ml-3"><option value="todo">To do</option><option value="in_progress">In progress</option><option value="done">Done</option></select></label>
+      </article>)}
+    </> : <div className="glass-card p-6 rounded-xl"><p className="text-text-muted">You don't have a roadmap yet.</p><Link to="/careers" className="inline-block mt-4 text-primary-400">Choose a career →</Link></div>)}
+  </div>;
 }

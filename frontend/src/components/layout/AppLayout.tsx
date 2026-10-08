@@ -3,7 +3,7 @@ import { useAuth } from '../../auth/AuthContext';
 import Sidebar from './Sidebar';
 
 export default function AppLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, error, refresh } = useAuth();
 
   // Wait for session check to complete before deciding
   if (loading) {
@@ -14,6 +14,7 @@ export default function AppLayout() {
     );
   }
 
+  if (error) return <div role="alert" className="p-8 text-white">{error} <button onClick={() => void refresh()} className="underline">Retry</button></div>;
   // Not authenticated — redirect to login
   if (!user) {
     return <Navigate to="/login" replace />;

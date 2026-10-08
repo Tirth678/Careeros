@@ -1,35 +1,41 @@
-import { MOCK_SKILLS } from '../data/skills';
-import { useState } from 'react';
-import SkillDetailDrawer from '../components/skills/SkillDetailDrawer';
+import { useState, type FormEvent } from 'react';
+import { useAuth } from '../auth/AuthContext';
+import { useApi } from '../lib/useApi';
+import { apiFetch } from '../lib/api';
+import type { StudentSkillDTO } from '../lib/models';
+import RequestState from '../components/RequestState';
 
 export default function SkillsPage() {
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">My Skills</h1>
-        <p className="text-text-muted mt-1">Understand your strengths and identify what to improve.</p>
-      </div>
-      <div className="flex gap-4 text-sm">
-        <div className="px-4 py-2 glass-card rounded-lg border border-white/10"><span className="text-white font-bold">18</span> Skills</div>
-        <div className="px-4 py-2 glass-card rounded-lg border border-white/10"><span className="text-primary-400 font-bold">12</span> Strong</div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {MOCK_SKILLS.map(skill => (
-          <div key={skill.id} onClick={() => setSelectedSkill(skill.id)} className="glass-card p-5 rounded-xl border border-white/10 cursor-pointer hover:border-primary-500/50 transition-colors">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-white">{skill.name}</h3>
-              <span className="text-xs px-2 py-1 bg-background-200 rounded-md text-text-muted">{skill.status}</span>
-            </div>
-            <div className="h-2 w-full bg-background-200 rounded-full overflow-hidden">
-              <div className="h-full bg-primary-500 rounded-full" style={{ width: `${skill.proficiency}%` }} />
-            </div>
-            <p className="text-right text-xs mt-2 text-text-muted">{skill.proficiency}%</p>
-          </div>
-        ))}
-      </div>
-      <SkillDetailDrawer skillId={selectedSkill} onClose={() => setSelectedSkill(null)} />
-    </div>
-  );
+  const { user } = useAuth();
+  const path = `/api/profiles/${encodeURIComponent(user!.id)}/skills`;
+  const { data, loading, error, reload } = useApi<StudentSkillDTO[]>(path);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = event.currentTarget; const values = new FormData(form);
+    setBusy(true); setMessage('');
+    try { await apiFetch(path, { method: 'PUT', body: JSON.stringify({ name: values.get('name'), proficiency: Number(values.get('proficiency')), source: 'self' }) }); form.reset(); reload(); }
+    catch (err) { setMessage(err instanceof Error ? err.message : 'Unable to save skill'); }
+    finally { setBusy(false); }
+  }
+  return <div className="space-y-6"><h1 className="text-3xl font-bold text-white">My skills</h1>
+    <p className="text-text-muted">Add a skill or enter an existing skill name to update its proficiency.</p>
+    <form onSubmit={save} className="glass-card rounded-xl p-5 flex gap-4 flex-wrap items-end">
+      <label className="text-text-muted">Skill name<input name="name" required maxLength={80} placeholder="e.g. TypeScript" className="block bg-background-100 p-3 rounded-lg text-white mt-2" /></label>
+      <label className="text-text-muted">Proficiency (0–100)<input name="proficiency" type="number" required min={0} max={100} defaultValue={50} className="block bg-background-100 p-3 rounded-lg text-white mt-2" /></label>
+      <button disabled={busy} className="bg-white text-black p-3 rounded-lg disabled:opacity-50">{busy ? 'Saving…' : 'Save skill'}</button>
+    </form>
+    {message && <p role="alert" className="text-red-400">{message}</p>}
+    <RequestState loading={loading} error={error} retry={reload} />
+    {!loading && !error && <><p className="text-text-muted">{data?.length ?? 0} skills tracked</p><div className="grid md:grid-cols-3 gap-4">{data?.map(skill => <div key={skill.id} className="glass-card p-5 rounded-xl border border-white/10">
+      <h2 className="text-white font-semibold">{skill.name}</h2><p className="text-text-muted my-3">{skill.proficiency}% proficiency</p>
+      <progress aria-label={`${skill.name} proficiency`} value={skill.proficiency} max={100} className="w-full accent-green-400" />
+      <button disabled={busy} className="text-red-400 text-sm mt-4" onClick={async () => {
+        setBusy(true); setMessage('');
+        try { await apiFetch(`${path}/${encodeURIComponent(skill.name)}`, { method: 'DELETE' }); reload(); }
+        catch (err) { setMessage(err instanceof Error ? err.message : 'Unable to remove skill'); }
+        finally { setBusy(false); }
+      }}>Remove skill</button>
+    </div>)}</div></>}
+  </div>;
 }

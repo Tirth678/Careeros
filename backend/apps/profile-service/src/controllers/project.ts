@@ -17,7 +17,7 @@ export const projectController = {
 
   async get(ctx: Ctx<{ projectId: string }>) {
     const { projectId } = parse(projectIdParam, ctx.params);
-    return ok(await projectService.get(projectId));
+    return ok(await projectService.get(projectId, resolveStudentId(ctx)));
   },
 
   async create(ctx: Ctx) {

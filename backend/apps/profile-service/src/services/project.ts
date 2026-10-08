@@ -25,9 +25,9 @@ export const projectService = {
     return projects.map(toProjectDTO);
   },
 
-  async get(projectId: string): Promise<ProjectDTO> {
+  async get(projectId: string, studentId: string): Promise<ProjectDTO> {
     const project = await projectRepository.findById(projectId);
-    if (!project) throw new ServiceError("PROJECT_NOT_FOUND", "Project does not exist");
+    if (!project || project.studentId !== studentId) throw new ServiceError("PROJECT_NOT_FOUND", "Project does not exist");
     return toProjectDTO(project);
   },
 

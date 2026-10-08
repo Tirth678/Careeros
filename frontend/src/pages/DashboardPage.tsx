@@ -1,35 +1,32 @@
-import ReadinessCard from '../components/dashboard/ReadinessCard';
-import StreakCard from '../components/dashboard/StreakCard';
-import SkillsOverview from '../components/dashboard/SkillsOverview';
-import RoadmapOverview from '../components/dashboard/RoadmapOverview';
-import NextBestAction from '../components/dashboard/NextBestAction';
-import CareerMatches from '../components/dashboard/CareerMatches';
-import ParticleBackground from '../components/landing/ParticleBackground';
+import { Link } from 'react-router-dom';
+import { useApi } from '../lib/useApi';
+import type { DashboardDTO } from '../lib/models';
+import RequestState from '../components/RequestState';
 
 export default function DashboardPage() {
-  return (
-    <div className="relative min-h-screen">
-      <ParticleBackground />
-      <div className="relative z-10 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Good morning, Tirth.</h1>
-          <p className="text-text-muted mt-1">Here's your career progress at a glance.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <ReadinessCard />
-          <StreakCard />
-          <SkillsOverview />
-          <RoadmapOverview />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <NextBestAction />
-          </div>
-          <div>
-            <CareerMatches />
-          </div>
-        </div>
+  const { data, loading, error, reload } = useApi<DashboardDTO>('/api/dashboard');
+  return <div className="space-y-6">
+    <h1 className="text-3xl font-bold text-white">{data ? `Welcome, ${data.student.name}.` : 'Your dashboard'}</h1>
+    <RequestState loading={loading} error={error} retry={reload} />
+    {!loading && !error && data && <>
+      {!data.student.degree && <Link className="block glass-card p-5 rounded-xl text-primary-400" to="/profile">Complete your profile to get started →</Link>}
+      <div className="grid md:grid-cols-3 gap-4">
+        {[
+          ['Career readiness', data.readiness.score === null ? 'Not analyzed yet' : `${data.readiness.score}%`],
+          ['Current streak', `${data.streak.currentStreak} days`],
+          ['Skills tracked', String(data.skills.length)],
+        ].map(([title, value]) => <div key={title} className="glass-card p-6 rounded-xl border border-white/10"><p className="text-text-muted">{title}</p><p className="text-2xl font-bold text-white mt-2">{value}</p></div>)}
       </div>
-    </div>
-  );
+      <section className="glass-card p-6 rounded-xl border border-white/10">
+        <h2 className="text-xl text-white font-semibold">Your roadmap</h2>
+        <p className="text-text-muted mt-3">{data.roadmap ? `${data.roadmap.title} · ${data.roadmap.progress}% complete` : 'Choose a career and generate your first roadmap.'}</p>
+        {data.roadmap?.nextTask && <p className="text-white mt-3">Next: {data.roadmap.nextTask.title} · {data.roadmap.nextTask.estimatedMinutes} minutes</p>}
+        <Link className="inline-block text-primary-400 mt-4" to={data.roadmap ? '/roadmap' : '/careers'}>{data.roadmap ? 'Continue roadmap' : 'Explore careers'} →</Link>
+      </section>
+      <section className="glass-card p-6 rounded-xl border border-white/10"><h2 className="text-xl text-white font-semibold">Your skills</h2>
+        {data.skills.length ? data.skills.map(skill => <div key={skill.name} className="flex justify-between text-text-muted mt-3"><span>{skill.name}</span><span>{skill.level}%</span></div>) : <p className="text-text-muted mt-3">Add your first skill to calculate career matches.</p>}
+        <Link to="/skills" className="inline-block text-primary-400 mt-4">Manage skills →</Link>
+      </section>
+    </>}
+  </div>;
 }

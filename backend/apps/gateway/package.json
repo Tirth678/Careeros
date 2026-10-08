@@ -9,12 +9,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auth/express": "0.12.3",
+    "@auth/prisma-adapter": "2.11.3",
     "@careeros/config": "workspace:*",
     "@careeros/database": "workspace:*",
     "@careeros/http": "workspace:*",
     "@careeros/shared-types": "workspace:*",
     "@careeros/validation": "workspace:*",
-    "better-auth": "^1.7.7",
     "express": "^5.1.0"
   }
 }

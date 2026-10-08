@@ -40,13 +40,14 @@ function pump(stream: NodeJS.ReadableStream, prefix: string) {
 
 for (const service of SERVICES) {
   const prefix = `${service.color}[${service.name}]${RESET} `;
-  const child = spawn("npx", ["tsx", service.path], {
+  const child = spawn(process.execPath, ['--import', 'tsx', ...(WATCH ? ['--watch'] : []), service.path], {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     env: process.env,
   });
 
   children.push(child);
+  child.on('error', (error) => { console.error(error); stopAll(); process.exitCode = 1; });
 
   if (child.stdout) pump(child.stdout, prefix);
   if (child.stderr) pump(child.stderr, prefix);

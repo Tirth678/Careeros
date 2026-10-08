@@ -1,4 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
+import { timingSafeEqual } from 'node:crypto';
+import { config } from '@careeros/config';
 import {
   fail,
   isServiceError,
@@ -44,7 +46,7 @@ export function resolveStudentId(ctx: Ctx): string {
     throw new ServiceError("FORBIDDEN", "Cannot act on another student's data");
   }
 
-  const id = header ?? param ?? (typeof body === "string" ? body : undefined);
+  const id = header;
   if (!id) {
     throw new ServiceError("UNAUTHORIZED", "Missing student identity");
   }
@@ -70,9 +72,28 @@ export interface ServiceAppOptions {
  */
 export function createServiceApp({ name }: ServiceAppOptions): ServiceApp {
   const app = express();
+  app.disable('x-powered-by');
+  app.use((_req, res, next) => {
+    res.setHeader('x-content-type-options', 'nosniff');
+    res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
+    res.setHeader('x-frame-options', 'DENY');
+    next();
+  });
+  if (name !== 'gateway') app.use((req, res, next) => {
+    if (req.path === '/health') return next();
+    const supplied = Buffer.from(String(req.headers['x-service-secret'] ?? ''));
+    const expected = Buffer.from(config.INTERNAL_SERVICE_SECRET);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+      res.status(401).json(fail('UNAUTHORIZED', 'Service authentication required'));
+      return;
+    }
+    const match = /^\/internal\/students\/([^/]+)/.exec(req.path);
+    if (match) req.headers['x-student-id'] = decodeURIComponent(match[1]!);
+    next();
+  });
 
   // Parse JSON bodies
-  app.use(express.json());
+  app.use(express.json({ limit: '100kb' }));
 
   // Health check route
   app.get("/health", (req: Request, res: Response) => {
@@ -91,6 +112,11 @@ export function createServiceApp({ name }: ServiceAppOptions): ServiceApp {
  */
 export function registerErrorHandler(app: ServiceApp, name: string): void {
   app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+    if ((err as { type?: string })?.type === 'entity.parse.failed') {
+      res.status(400).json(fail('VALIDATION_ERROR', 'Invalid JSON body'));
+      return;
+    }
     if (isServiceError(err)) {
       res.status(err.status).json(err.toBody());
       return;
@@ -137,7 +163,9 @@ export async function callService<T>(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(url, { ...rest, signal: controller.signal });
+    const headers = new Headers(rest.headers);
+    headers.set('x-service-secret', config.INTERNAL_SERVICE_SECRET);
+    const res = await fetch(url, { ...rest, headers, signal: controller.signal });
     const body = (await res.json().catch(() => null)) as
       | { success: true; data: T }
       | { success: false; error?: { code?: string; message?: string; details?: unknown } }

@@ -9,8 +9,10 @@ import {
   ok,
   registerErrorHandler,
 } from "@careeros/http";
-import type { DashboardDTO } from "@careeros/shared-types";
-import { studentIdOf } from "./auth";
+import type { DashboardDTO, StudentDTO, StudentSkillDTO } from "@careeros/shared-types";
+import { studentIdOf, authConfig } from "./auth";
+import { ExpressAuth } from '@auth/express';
+import { resolve } from 'node:path';
 import { forward, resolveTarget, segmentOf } from "./proxy";
 import { RateLimiter } from "./rateLimit";
 
@@ -39,18 +41,12 @@ function applyCors(res: Response, origin: string | null): void {
 }
 
 function clientKey(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    return forwarded.split(",")[0]!.trim();
-  }
-  if (Array.isArray(forwarded) && forwarded.length > 0) {
-    return forwarded[0]!.trim();
-  }
   const ip = req.ip || req.socket.remoteAddress || "unknown";
   return ip;
 }
 
-const app = createServiceApp({ name: "gateway" });
+export const app = createServiceApp({ name: "gateway" });
+app.set('trust proxy', config.TRUST_PROXY_HOPS);
 
 // ── Rate limit + CORS preflight middleware ─────────────────────
 app.use(async (req: Request, res: Response, next: NextFunction) => {
@@ -80,24 +76,40 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 
   // Apply CORS to all responses
-  res.on("finish", () => {
-    applyCors(res, origin);
-  });
+  applyCors(res, origin);
+  res.setHeader('cache-control', 'no-store');
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
+      (!origin || !config.corsOrigins.includes(origin))) {
+    res.status(403).json(fail('FORBIDDEN', 'Untrusted request origin'));
+    return;
+  }
 
   next();
 });
 
+// Pin Auth.js URL construction to the configured public origin.
+app.use('/api', (req, _res, next) => {
+  req.headers.host = new URL(config.APP_URL).host;
+  delete req.headers['x-forwarded-host'];
+  next();
+});
+// A regex capture preserves the Auth.js Express adapter's params[0] contract on Express 5.
+app.use(/^\/api\/auth\/(.*)/, ExpressAuth(authConfig));
+
 // ── Dashboard: authenticated fan-out to the career service ─────
 app.get("/api/dashboard", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const studentId = await studentIdOf(req.headers);
+    const studentId = await studentIdOf(req);
     if (!studentId) {
       res.status(401).json(fail("UNAUTHORIZED", "Sign in to view your dashboard"));
       return;
     }
-    const dashboard = await callService<DashboardDTO>(
-      `${config.CAREER_SERVICE_URL}/internal/students/${studentId}/dashboard`,
-    );
+    const [slice, student, skills] = await Promise.all([
+      callService<Omit<DashboardDTO, 'student' | 'skills'>>(`${config.CAREER_SERVICE_URL}/internal/students/${studentId}/dashboard`),
+      callService<StudentDTO>(`${config.PROFILE_SERVICE_URL}/internal/students/${studentId}`),
+      callService<StudentSkillDTO[]>(`${config.PROFILE_SERVICE_URL}/internal/students/${studentId}/skills`),
+    ]);
+    const dashboard: DashboardDTO = { ...slice, student, skills: skills.map(skill => ({ name: skill.name, level: skill.proficiency })) };
     res.json(ok(dashboard));
   } catch (err) {
     next(err);
@@ -115,7 +127,11 @@ app.all("/api/*path", async (req: Request, res: Response, next: NextFunction) =>
       return;
     }
 
-    const studentId = await studentIdOf(req.headers);
+    const studentId = await studentIdOf(req);
+    if (!studentId) {
+      res.status(401).json(fail('UNAUTHORIZED', 'Sign in to continue'));
+      return;
+    }
     const method = req.method;
     const hasBody = method !== "GET" && method !== "HEAD";
 
@@ -153,10 +169,16 @@ app.all("/api/*path", async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+if (config.NODE_ENV === 'production') {
+  const frontend = resolve(process.cwd(), '../frontend/dist');
+  app.use(express.static(frontend));
+  app.get('/{*path}', (_req, res) => res.sendFile(resolve(frontend, 'index.html')));
+}
+
 // Register error handler after all routes
 registerErrorHandler(app, "gateway");
 
-listenService(app, "gateway", config.GATEWAY_PORT);
+if (config.NODE_ENV !== 'test') listenService(app, "gateway", config.GATEWAY_PORT);
 
 async function shutdown(signal: string) {
   console.log(`[gateway] ${signal} received, shutting down`);

@@ -41,7 +41,7 @@ export const createProfileSchema = z.object({
     .nullish(),
 });
 
-export const updateProfileSchema = createProfileSchema.partial();
+export const updateProfileSchema = createProfileSchema.omit({ email: true }).partial();
 
 export const studentIdParam = z.object({
   studentId: z.string().min(1),

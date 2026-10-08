@@ -55,7 +55,7 @@ export const roadmapController = {
 
   async get(ctx: Ctx) {
     const { roadmapId } = parse(roadmapParam, ctx.params);
-    return ok(await roadmapService.get(roadmapId));
+    return ok(await roadmapService.get(roadmapId, resolveStudentId(ctx)));
   },
 
   async updateTask(ctx: Ctx) {

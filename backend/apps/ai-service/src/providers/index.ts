@@ -23,7 +23,7 @@ export function getAIProvider(): AIProvider {
       apiKey: config.OPENROUTER_API_KEY,
       model: config.OPENROUTER_MODEL,
       fallbackModel: config.OPENROUTER_FALLBACK_MODEL || undefined,
-      referer: config.BETTER_AUTH_URL,
+      referer: config.APP_URL,
       title: "Careeros",
       maxTokens: config.OPENROUTER_MAX_TOKENS,
     });

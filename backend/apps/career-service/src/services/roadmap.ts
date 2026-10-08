@@ -77,9 +77,9 @@ export const roadmapService = {
     return toRoadmapDTO(roadmap);
   },
 
-  async get(roadmapId: string): Promise<RoadmapDTO> {
+  async get(roadmapId: string, studentId: string): Promise<RoadmapDTO> {
     const roadmap = await roadmapRepository.findById(roadmapId);
-    if (!roadmap) {
+    if (!roadmap || roadmap.studentId !== studentId) {
       throw new ServiceError("ROADMAP_NOT_FOUND", "Roadmap does not exist");
     }
     return toRoadmapDTO(roadmap);

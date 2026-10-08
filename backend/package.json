@@ -2,9 +2,9 @@
   "name": "backend",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "tsx scripts/dev.ts",
@@ -17,7 +17,9 @@
     "db:migrate": "cd packages/database && pnpm migrate",
     "db:push": "cd packages/database && pnpm push",
     "db:seed": "cd packages/database && pnpm seed",
-    "db:studio": "cd packages/database && pnpm studio"
+    "db:studio": "cd packages/database && pnpm studio",
+    "start": "node --import tsx scripts/dev.ts",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

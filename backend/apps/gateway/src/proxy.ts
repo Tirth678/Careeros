@@ -37,6 +37,9 @@ const HOP_BY_HOP = new Set([
   "transfer-encoding",
   "upgrade",
   "x-student-id",
+  "x-service-secret",
+  "authorization",
+  "cookie",
 ]);
 
 export function segmentOf(path: string): string {
@@ -44,6 +47,12 @@ export function segmentOf(path: string): string {
 }
 
 export function resolveTarget(path: string): string | null {
+  try {
+    if (path.split('/').some(part => {
+      const decoded = decodeURIComponent(part);
+      return decoded === '.' || decoded === '..' || /[\\/\u0000]/.test(decoded);
+    })) return null;
+  } catch { return null; }
   const segment = segmentOf(path);
   if (RESERVED_SEGMENTS.has(segment)) return null;
   return SERVICES[segment] ?? null;
@@ -75,6 +84,7 @@ export async function forward({
     if (!HOP_BY_HOP.has(key.toLowerCase())) out.set(key, value);
   });
   if (studentId) out.set("x-student-id", studentId);
+  out.set('x-service-secret', config.INTERNAL_SERVICE_SECRET);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

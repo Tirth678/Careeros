@@ -1,4 +1,3 @@
-import { getToken } from './neonAuth';
 
 const base = import.meta.env.VITE_API_URL as string | undefined;
 
@@ -24,10 +23,9 @@ type Envelope<T> =
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json');
-  const token = getToken();
-  if (token) headers.set('authorization', `Bearer ${token}`);
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'include' });
+  if (res.status === 401) window.dispatchEvent(new Event('auth:expired'));
 
   const text = await res.text();
   let body: Envelope<T> | null = null;
@@ -45,5 +43,6 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!body.success) {
     throw new ApiError(body.error.code, body.error.message, res.status);
   }
+  if (!res.ok) throw new ApiError('HTTP_ERROR', 'The request failed', res.status);
   return body.data;
 }

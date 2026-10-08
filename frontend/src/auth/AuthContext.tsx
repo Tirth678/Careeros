@@ -1,103 +1,39 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  getSession,
-  signIn as neonSignIn,
-  signInWithGoogle as neonSignInWithGoogle,
-  signOut as neonSignOut,
-  signUp as neonSignUp,
-  type AuthUser,
-} from '../lib/neonAuth';
+import { getSession, signInWithGoogle, signOut as endSession, type AuthUser } from '../lib/auth';
 
 type AuthContextValue = {
-  user: AuthUser | null;
-  loading: boolean;
-  signIn: (input: { email: string; password: string }) => Promise<AuthUser>;
-  signInWithGoogle: () => void;
-  signUp: (input: { name: string; email: string; password: string }) => Promise<AuthUser>;
-  signOut: () => Promise<void>;
-  refresh: () => Promise<void>;
+  user: AuthUser | null; loading: boolean; error: string | null;
+  signInWithGoogle: () => Promise<void>; signOut: () => Promise<void>; refresh: () => Promise<void>;
 };
-
 const AuthContext = createContext<AuthContextValue | null>(null);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-
   const refresh = useCallback(async () => {
-    try {
-      const session = await getSession();
-      setUser(session?.user ?? null);
-      return session?.user ?? null;
-    } catch {
-      setUser(null);
-      return null;
-    }
+    setError(null);
+    try { setUser((await getSession())?.user ?? null); }
+    catch (err) { setUser(null); setError(err instanceof Error ? err.message : 'Session check failed'); }
+    finally { setLoading(false); }
   }, []);
-
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const sessionUser = await refresh();
-      if (!cancelled) {
-        setLoading(false);
-        // If we just landed on /dashboard via Google OAuth callback and have a
-        // valid session, stay on dashboard. Nothing to do — the guard allows it.
-        // If we have a user and are on /login or /signup, redirect to dashboard.
-        const path = window.location.pathname;
-        if (sessionUser && (path === '/login' || path === '/signup')) {
-          navigate('/dashboard', { replace: true });
-        }
-      }
-    })();
-    return () => { cancelled = true; };
+    void refresh();
+    const expired = () => { setUser(null); navigate('/login', { replace: true }); };
+    const focus = () => { void refresh(); };
+    window.addEventListener('auth:expired', expired);
+    window.addEventListener('focus', focus);
+    return () => { window.removeEventListener('auth:expired', expired); window.removeEventListener('focus', focus); };
   }, [refresh, navigate]);
-
-  const signIn = useCallback(async (input: { email: string; password: string }) => {
-    const { user: next } = await neonSignIn(input);
-    setUser(next);
-    return next;
-  }, []);
-
-  const signInWithGoogle = useCallback(() => {
-    neonSignInWithGoogle();
-  }, []);
-
-  const signUp = useCallback(
-    async (input: { name: string; email: string; password: string }) => {
-      const { user: next } = await neonSignUp(input);
-      setUser(next);
-      return next;
-    },
-    [],
-  );
-
   const signOut = useCallback(async () => {
-    await neonSignOut();
-    setUser(null);
-    navigate('/login', { replace: true });
+    await endSession(); setUser(null); navigate('/login', { replace: true });
   }, [navigate]);
-
-  const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, signIn, signInWithGoogle, signUp, signOut, refresh }),
-    [user, loading, signIn, signInWithGoogle, signUp, signOut, refresh],
-  );
-
+  const value = useMemo(() => ({ user, loading, error, refresh, signInWithGoogle, signOut }), [user, loading, error, refresh, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
+export function useAuth() {
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('AuthProvider is missing');
+  return value;
 }
